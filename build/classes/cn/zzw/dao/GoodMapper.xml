@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="cn.zzw.dao.GoodMapper">
+   <insert  id="addGood"  parameterType="cn.zzw.pojo.good">
+      insert into good(id,name,iid,quantity,location,image,description,category_id) values(#{id},#{name},#{iid},#{quantity},#{location},#{image},#{description},#{category.id})
+   </insert>
+   <delete id="deleteGood" parameterType="java.lang.String">
+        delete from good where id=#{id} 
+   </delete>
+   <update id="updateGood" parameterType="cn.zzw.pojo.UpdateGoodVo">
+      update good  set name=#{name},iid=#{iid},quantity=#{quantity},location=#{location},description=#{description},category_id=#{category_id} where id=#{id}
+   </update>
+   <select id="findGood" parameterType="java.lang.String" resultType="cn.zzw.pojo.goodview">
+       select * from goodview where id=#{id}
+   </select>
+   <select id="findforCategory" parameterType="java.lang.String" resultType="cn.zzw.pojo.goodview">
+      select * from goodview where category_id=#{category_id}
+   </select>
+   <select id="getAllGood" resultType="cn.zzw.pojo.goodview">
+      select * from goodview
+   </select>
+   
+   
+</mapper>

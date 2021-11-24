@@ -1,0 +1,46 @@
+scan 视图 （出入库视图）
+
+门口机器读到的标签且 5s内 （人/物标签）出入库状态一样  （注意要考虑    g.t -5 <= p.T <= g.t  p.t -5 <= g.T <= p.t  两种情况）
+
+SELECT
+`user`.name  peoplename,
+`user`.iid   peopleiid,
+good.`name` goodname,
+good.iid goodiid,
+goodscan.createDate,
+goodscan.statu
+FROM
+	good,
+	goodscan,
+	peoplescan,
+	`user`
+WHERE
+    good.iid = goodscan.cardNo
+AND peoplescan.cardNo = `user`.iid
+AND peoplescan.`host`='192.168.0.201'
+AND goodscan.`host`='192.168.0.201'
+AND peoplescan.statu=goodscan.statu     
+and 
+((peoplescan.createDate<=goodscan.createDate  and UNIX_TIMESTAMP(peoplescan.createDate)>=UNIX_TIMESTAMP(goodscan.createDate)-5)
+OR 
+(goodscan.createDate<=peoplescan.createDate
+and UNIX_TIMESTAMP(goodscan.createDate)>=UNIX_TIMESTAMP(peoplescan.createDate)-5))
+  
+
+
+goodview
+SELECT
+	good.id,
+	good. NAME,
+	good.iid,
+	good.quantity,
+	good.location,
+	good.image,
+	good.description,
+	good.category_id,
+	category.`name`  categoryname
+FROM
+	good,
+	category
+WHERE
+	good.category_id = category.id;

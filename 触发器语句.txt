@@ -1,0 +1,110 @@
+targeinfo 触发器   （1.用于不重复读 （5s） 进去truetargeinfo表  ）
+
+功能详解：
+判断该标签在 去重表（truetargeinfo) 且门口机器（host="192.168.0.201"） 5s内有没有被读到过，如果有就不插入，如果没有（num=0)就插入
+如果（host="192.168.0.200")每一秒都可以读入，用于判断rssi
+
+DELIMITER $
+create trigger  targeinfo after insert
+on targeinfo for each row
+begin
+declare doornum int;
+declare homenum int;
+set doornum=(select count(truetargeinfo.createDate) from truetargeinfo where truetargeinfo.createDate<=new.createDate and UNIX_TIMESTAMP(truetargeinfo.createDate)>=UNIX_TIMESTAMP(new.createDate)-5 and truetargeinfo.cardNo=new.cardNo  and  truetargeinfo.host='192.168.0.201');
+set homenum=(select count(truetargeinfo.createDate) from truetargeinfo where truetargeinfo.createDate=new.createDate and truetargeinfo.cardNo=new.cardNo  and  truetargeinfo.host='192.168.0.200');
+if doornum=0  and new.host='192.168.0.201' then 
+INSERT into truetargeinfo(cardNo,createDate,antNo,Rssi,host,Type,statu) values(new.cardNo,new.createDate,new.antNo,new.Rssi,new.host,new.Type,-1);
+elseif homenum=0  and new.host='192.168.0.200' then 
+INSERT into truetargeinfo(cardNo,createDate,antNo,Rssi,host,Type,statu) values(new.cardNo,new.createDate,new.antNo,new.Rssi,new.host,new.Type,-1);
+END IF; 
+end$
+DELIMITER;
+
+  ↓
+  ↓
+
+truetargeinfo 触发器  （用于判断人/物,分配进哪个表peoplescan/goodscan）
+
+DELIMITER $
+create trigger  truetargeinfo after insert
+on truetargeinfo for each row
+begin
+if new.Type='B'  then 
+INSERT into goodscan(cardNo,createDate,antNo,Rssi,host,Type,statu) values(new.cardNo,new.createDate,new.antNo,new.Rssi,new.host,new.Type,1);
+END IF;   
+if new.Type='A'  then 
+INSERT into peoplescan(cardNo,createDate,antNo,Rssi,host,Type,statu) values(new.cardNo,new.createDate,new.antNo,new.Rssi,new.host,new.Type,1);
+END IF; 
+end$
+DELIMITER;
+
+  ↓
+  ↓
+
+changestatus 触发器 （判断货物历史状态  只有门口机器才改变状态  192.168.0.201）  （0 是库外  代表 出库  1是库内 代表进库）
+
+功能详解：
+门口机器读到（host="192.168.0.201"）-->找该标签 的最新的历史状态，如果没找到（statu = null)，说明之前没进入过，现在进库statu置0; 如果找到(status=1/0)，判断之后取反。
+室内机器读到（host="192.168.0.200"）-->找该标签 的最新的历史状态，状态不变，赋值
+
+DELIMITER $
+create trigger changestatus BEFORE insert
+on peoplescan for each row
+begin
+declare sstatu int;
+set sstatu = (select statu from peoplescan where createDate=(select  max(createDate) from peoplescan where peoplescan.cardNo=new.cardNo and peoplescan.host='192.168.0.201') and  peoplescan.cardNo=new.cardNo and peoplescan.host='192.168.0.201'  );
+if(new.host='192.168.0.201') 
+  then
+    if sstatu is null then
+      set new.statu=1;
+    elseif sstatu=0 then
+      set new.statu=1;
+    elseif sstatu=1 then
+      set new.statu=0;
+    end if;
+elseif(new.host='192.168.0.200') 
+  then
+    if sstatu is null then
+      set new.statu=1;
+    elseif sstatu=0 then
+      set new.statu=sstatu;
+    elseif sstatu=1 then
+      set new.statu=sstatu;
+    end if;
+end if;
+end$
+DELIMITER;
+
+
+
+changestatus1 触发器 （判断货物历史状态   只有门口机器才改变状态  192.168.0.201)  （0 是库外  代表 出库  1是库内 代表进库）
+
+功能详解：上同
+
+DELIMITER $
+create trigger changestatus1 BEFORE insert
+on goodscan for each row
+begin
+declare sstatu int;
+set sstatu = (select statu from goodscan where createDate=(select  max(createDate) from goodscan where goodscan.cardNo=new.cardNo and goodscan.host='192.168.0.201') and  goodscan.cardNo=new.cardNo  and goodscan.host='192.168.0.201');
+if(new.host='192.168.0.201') 
+  then
+    if sstatu is null then
+      set new.statu=1;
+    elseif sstatu=0 then
+      set new.statu=1;
+    elseif sstatu=1 then
+      set new.statu=0;
+    end if;
+elseif(new.host='192.168.0.200') 
+  then
+    if sstatu is null then
+      set new.statu=1;
+    elseif sstatu=0 then
+      set new.statu=sstatu;
+    elseif sstatu=1 then
+      set new.statu=sstatu;
+    end if;
+end if;
+end$
+DELIMITER;
